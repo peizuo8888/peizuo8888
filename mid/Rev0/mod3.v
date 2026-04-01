@@ -57,7 +57,7 @@ begin
     end
     else
     begin
-        nt_state <= cr_state;
+        cr_state <= nt_state;
         case (cr_state)
             ex_right:
             begin
