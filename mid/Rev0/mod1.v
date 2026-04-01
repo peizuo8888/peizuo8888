@@ -1,5 +1,6 @@
-module mod1(clk,rst_n,button,out_0,out_1,out_2,out_3);
+module mod1(clk,clk_2hz,rst_n,button,out_0,out_1,out_2,out_3);
 input clk;
+input clk_2hz;
 input rst_n;
 input button;
 output reg [6:0] out_0;
@@ -8,8 +9,8 @@ output reg [6:0] out_2;
 output reg [6:0] out_3;
 reg [2:0] num;
 reg [2:0] counter;
-reg [3:0] cr_state;
-reg [3:0] nt_state;
+reg [4:0] cr_state;
+reg [4:0] nt_state;
 
 wire [6:0] seg_right;
 wire [6:0] seg_left;
@@ -23,20 +24,27 @@ parameter       idle        =   5'b00001,
 
 
 
-always @(posedge clk or negedge rst_n)
+always @(posedge clk_2hz or negedge rst_n)
 begin
     if (!rst_n)
     begin
-        out_0 <= 4'b0;
-        out_1 <= 4'b0;
-        out_2 <= 4'b0;
-        out_3 <= 4'b0;
+        out_0 <= 7'b111_1111;
+        out_1 <= 7'b111_1111;
+        out_2 <= 7'b111_1111;
+        out_3 <= 7'b111_1111;
         cr_state <= idle;
     end
     else
     begin
         cr_state <= nt_state;
         case (cr_state)
+            idle:
+            begin
+                out_0 <= out_1;
+                out_1 <= out_2;
+                out_2 <= out_3;
+                out_3 <= 7'b111_1001;
+            end
             ex_right:
             begin
                 out_0 <= out_1;
@@ -68,7 +76,21 @@ begin
         endcase
     end
 end
-
+always @(*)
+begin
+    case (cr_state)
+        idle    :
+            nt_state <= right;
+        ex_right:
+            nt_state <= (counter >= num-1) ? right: ex_right;
+        right   :
+            nt_state <= (counter == 3'd3) ? ((num==1)? left : ex_left ): right;
+        ex_left :
+            nt_state <= (counter >= num-1) ? left: ex_left;
+        left    :
+            nt_state <= (counter == 3'd3) ? ((num == 1)? right:ex_right): left;
+    endcase
+end
 
 always @(posedge clk or negedge rst_n)
 begin
@@ -88,7 +110,7 @@ begin
         end
     end
 end
-always @(posedge clk or negedge rst_n)
+always @(posedge clk_2hz or negedge rst_n)
 begin
     if (!rst_n)
     begin
@@ -106,6 +128,6 @@ begin
         end
     end
 end
-seven_seg M11(.clk(clk), .rst_n(rst_n), .data(counter), .o(seg_right));
+seven_seg M11(.clk(clk), .rst_n(rst_n), .data(counter+1), .o(seg_right));
 seven_seg M12(.clk(clk), .rst_n(rst_n), .data(num-counter), .o(seg_left));
 endmodule
