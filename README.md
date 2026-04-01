@@ -1,2 +1,3 @@
-# Mid
-Verilog
+# Hi, I'm Peizuo 
+- FPGA
+- Verilog
