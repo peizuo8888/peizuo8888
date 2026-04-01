@@ -1,7 +1,6 @@
 module mod2(clk,rst_n,address,q,out_0,out_1,out_2,out_3);
 input clk;
 input rst_n;
-input wren;
 input [2:0] address;
 input [3:0] q;
 output [6:0] out_0;
