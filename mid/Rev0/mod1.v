@@ -8,33 +8,41 @@ output reg [6:0] out_2;
 output reg [6:0] out_3;
 reg [3:0] counter;
 wire btn_debounce;
-button_debounce M11#(
-    CNT_MAX = 20'd999_999
-)(
-    clk, rst_n, button, btn_debounce
-);
-always @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
+button_debounce #(
+                    .CNT_MAX(20'd999_999)
+                ) M11(
+                    clk, rst_n, button, btn_debounce
+                );
+always @(posedge clk or negedge rst_n)
+begin
+    if (!rst_n)
+    begin
         counter <= 4'b0;
-    end else begin
-        if (btn_debounce) begin
+    end
+    else
+    begin
+        if (btn_debounce)
+        begin
             counter<= counter+1'b1;
-        end else begin
+        end
+        else
+        begin
             counter <= counter;
         end
     end
 end
 
-always @(posedge clk or negedge) begin
-    if (!rst_n) begin
-        
-    end else begin
-      
+always @(posedge clk or negedge rst_n)
+begin
+    if (!rst_n)
+    begin
+
+    end
+    else
+    begin
+
     end
 end
-
-
-
 
 
 endmodule
