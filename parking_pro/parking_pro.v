@@ -42,7 +42,7 @@ reg     [3:0]   cr_state;               //DONE
 //reg     [3:0]   nt_state;
 reg             car_out_reg;            //DONE
 reg             car_in_reg;             //DONE
-reg             car_plate_reg;          //DONE
+reg     [7:0]   car_plate_reg;          //DONE
 
 reg     [7:0]   bitmap_reg;             //DONE
 wire    [7:0]   bitmap_in;              //DONE
@@ -50,7 +50,7 @@ wire    [7:0]   bitmap_out;             //DONE
 reg     [3:0]   empty_space;            //DONE
 reg     [3:0]   car_space_record;       //DONE
 reg     [3:0]   addr_cnt;               //DONE 
-
+reg             sram_wait;              //DONE
 localparam          IDLE                = 4'd0,
                     READ_SRAM           = 4'd1,
                     READ_BITMAP         = 4'd2,
@@ -87,6 +87,7 @@ always @(posedge clk or negedge rst_n) begin
         car_space_record    <= 4'd11;
         led                 <= 1'b0;   
         bitmap_reg          <= 8'b0;
+        sram_wait           <= 1'b0;
     end else begin
         case (cr_state)
             IDLE    :begin
@@ -98,55 +99,66 @@ always @(posedge clk or negedge rst_n) begin
                 car_out_reg     <= car_out;
                 car_plate_reg   <= car_plate;
                 addr_cnt        <= 8'd0;
+                sram_wait       <= 1'b0;
                 led             <= 1'b0;
             end
             READ_SRAM:begin 
                 parking_space   <= sram_dout;
-                if (sram_dout == 8'd8 && car_out_reg || sram_dout == 8'b0 && car_in)begin
+                if ((sram_dout == 8'd8) && car_out_reg || (sram_dout == 8'b0) && car_in_reg)begin
                     cr_state <= IDLE;
                     counter  <= 3'b0;
                 end 
                 else cr_state   <= READ_BITMAP;
+                sram_wait   <= 1'b1;
                 addr_cnt    <= 8'd1; 
                 end
             READ_BITMAP:begin
-                bitmap_reg  <= sram_dout;
-                empty_space <= find_empty_space(sram_dout);
-                addr_cnt    <= 8'd2;    
-                cr_state    <= READ_CAR_PLATE;
+                if (sram_wait) begin
+                    sram_wait <= 1'b0;
+                end else begin
+                    sram_wait <= 1'b1;
+                    bitmap_reg  <= sram_dout;
+                    empty_space <= find_empty_space(sram_dout);
+                    addr_cnt    <= 8'd2;    
+                    cr_state    <= READ_CAR_PLATE;
+                end
             end
             READ_CAR_PLATE:begin
-                if (sram_dout == car_plate_reg) begin
-                    if (car_in_reg) begin
-                        cr_state <= IDLE;
-                        counter  <= 3'b0;
-                    end else cr_state <= UPDATA;    
-                end else if (addr_cnt == 8'd0) begin
-                    if (car_out_reg) begin
-                        cr_state <= IDLE;
-                        counter  <= 3'b0;
-                    end else cr_state <= UPDATA;
+                if (sram_wait) begin
+                    sram_wait <= 1'b0;
+                end else begin
+                    if (sram_dout == car_plate_reg) begin
+                        if (car_in_reg) begin
+                            cr_state <= IDLE;
+                            counter  <= 3'b0;
+                        end else cr_state <= UPDATA;    
+                    end else if (addr_cnt == 8'd9) begin
+                        if (car_out_reg) begin
+                            cr_state <= IDLE;
+                            counter  <= 3'b0;
+                        end else cr_state <= UPDATA;
+                    end
+                    addr_cnt         <= addr_cnt +1'b1;
+                    car_space_record <= addr_cnt;
+                    sram_wait        <= 1'b1;
                 end
-                if (addr_cnt == 8'd9)   addr_cnt <= 8'd0;
-                else                    addr_cnt <= addr_cnt +1'b1;
-                car_space_record <= addr_cnt;
             end
             UPDATA:begin
                 if (car_in_reg)         parking_space <= parking_space - 1'b1; 
                 else                    parking_space <= parking_space + 1'b1;
                 cr_state <= WRITE_SRAM;
+                addr_cnt <= 8'd0;
             end
             WRITE_SRAM:begin
-                addr_cnt <= 8'd0;
+                addr_cnt <= 8'd1;
                 cr_state <= WRITE_BITMAP;
             end
             WRITE_BITMAP:begin
-                addr_cnt <= 8'd1;
+                if (car_in_reg)     addr_cnt    <= empty_space; 
+                else                addr_cnt    <= car_space_record;
                 cr_state <= WRITE_CAR_PLATE;
             end
             WRITE_CAR_PLATE:begin
-                if (car_in_reg)     addr_cnt    <= empty_space; 
-                else                addr_cnt    <= car_space_record;
                 cr_state <= DONE;
             end
             DONE:begin 
