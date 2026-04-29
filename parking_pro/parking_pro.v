@@ -91,8 +91,8 @@ always @(posedge clk or negedge rst_n) begin
         case (cr_state)
             IDLE    :begin
                 if (car_in || car_out) begin
+                    counter <= counter + 1'b1;
                     if(counter == 3'd2) cr_state <= READ_SRAM;
-                    else                counter <= counter + 1'b1;
                 end else                counter <= 3'b0;
                 car_in_reg      <= car_in;         
                 car_out_reg     <= car_out;
@@ -102,7 +102,10 @@ always @(posedge clk or negedge rst_n) begin
             end
             READ_SRAM:begin 
                 parking_space   <= sram_dout;
-                if (sram_dout == 8'd8 && car_out_reg || sram_dout == 8'b0 && car_in) cr_state <= DONE;
+                if (sram_dout == 8'd8 && car_out_reg || sram_dout == 8'b0 && car_in)begin
+                    cr_state <= IDLE;
+                    counter  <= 3'b0;
+                end 
                 else cr_state   <= READ_BITMAP;
                 addr_cnt    <= 8'd1; 
                 end
@@ -110,6 +113,7 @@ always @(posedge clk or negedge rst_n) begin
                 bitmap_reg  <= sram_dout;
                 empty_space <= find_empty_space(sram_dout);
                 addr_cnt    <= 8'd2;    
+                cr_state    <= READ_CAR_PLATE;
             end
             READ_CAR_PLATE:begin
                 if (sram_dout == car_plate_reg) begin
@@ -133,20 +137,22 @@ always @(posedge clk or negedge rst_n) begin
                 cr_state <= WRITE_SRAM;
             end
             WRITE_SRAM:begin
-                cr_state <= WRITE_BITMAP;
                 addr_cnt <= 8'd0;
+                cr_state <= WRITE_BITMAP;
             end
             WRITE_BITMAP:begin
                 addr_cnt <= 8'd1;
-                cr_state    <= WRITE_CAR_PLATE;
+                cr_state <= WRITE_CAR_PLATE;
             end
             WRITE_CAR_PLATE:begin
                 if (car_in_reg)     addr_cnt    <= empty_space; 
                 else                addr_cnt    <= car_space_record;
+                cr_state <= DONE;
             end
             DONE:begin 
-                counter <= 3'b0;
-                led     <= 1'b1;
+                counter     <= 3'b0;
+                led         <= 1'b1;
+                cr_state    <= IDLE; 
             end
         endcase
     end
