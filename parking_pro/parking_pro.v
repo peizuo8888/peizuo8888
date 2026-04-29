@@ -134,14 +134,16 @@ always @(posedge clk or negedge rst_n) begin
             end
             WRITE_SRAM:begin
                 cr_state <= WRITE_BITMAP;
-                addr_cnt <= 8'd1;
+                addr_cnt <= 8'd0;
             end
             WRITE_BITMAP:begin
-                if (car_in_reg)     addr_cnt    <= empty_space; 
-                else                addr_cnt    <= car_space_record;
+                addr_cnt <= 8'd1;
                 cr_state    <= WRITE_CAR_PLATE;
             end
-            WRITE_CAR_PLATE:;
+            WRITE_CAR_PLATE:begin
+                if (car_in_reg)     addr_cnt    <= empty_space; 
+                else                addr_cnt    <= car_space_record;
+            end
             DONE:begin 
                 counter <= 3'b0;
                 led     <= 1'b1;
@@ -157,11 +159,16 @@ assign sram_we      = ( cr_state == WRITE_SRAM          ||
                         cr_state == WRITE_BITMAP        || 
                         cr_state == WRITE_CAR_PLATE) ? 1'b1 : 1'b0;
 assign sram_addr    = addr_cnt;
-assign sram_din     =   (cr_state == UPDATA)                        ? parking_space :
-                        (cr_state == WRITE_SRAM && car_in_reg)      ? bitmap_in     :
-                        (cr_state == WRITE_SRAM && car_out_reg)     ? bitmap_out    :
-                        (cr_state == WRITE_BITMAP && car_in_reg)    ? car_plate_reg :
-                        (cr_state == WRITE_BITMAP && car_out_reg)   ? 8'b1111_1111 : 8'b1111_1111;
+assign sram_din     =   (cr_state == WRITE_SRAM)                     ? parking_space :
+                        (cr_state == WRITE_BITMAP && car_in_reg)     ? bitmap_in     :
+                        (cr_state == WRITE_BITMAP && car_out_reg)    ? bitmap_out    :
+                        (cr_state == WRITE_CAR_PLATE && car_in_reg)  ? car_plate_reg :
+                        (cr_state == WRITE_CAR_PLATE && car_out_reg) ? 8'b1111_1111 : 8'b1111_1111;
+// assign sram_din     =   (cr_state == UPDATA)                        ? parking_space :
+//                         (cr_state == WRITE_SRAM && car_in_reg)      ? bitmap_in     :
+//                         (cr_state == WRITE_SRAM && car_out_reg)     ? bitmap_out    :
+//                         (cr_state == WRITE_BITMAP && car_in_reg)    ? car_plate_reg :
+//                         (cr_state == WRITE_BITMAP && car_out_reg)   ? 8'b1111_1111 : 8'b1111_1111;
 assign state_dbg    = cr_state;
 assign sram_en      = 1'b1;
 endmodule
