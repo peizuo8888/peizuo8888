@@ -104,7 +104,7 @@ always @(posedge clk or negedge rst_n) begin
             end
             READ_SRAM:begin 
                 parking_space   <= sram_dout;
-                if ((sram_dout == 8'd8) && car_out_reg || (sram_dout == 8'b0) && car_in_reg)begin
+                if (((sram_dout == 8'd8) && car_out_reg) || ((sram_dout == 8'b0) && car_in_reg))begin
                     cr_state <= IDLE;
                     counter  <= 3'b0;
                 end 
